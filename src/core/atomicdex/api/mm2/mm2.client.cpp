@@ -14,6 +14,8 @@
  *                                                                            *
  ******************************************************************************/
 
+#include <filesystem>
+
 #include <meta/detection/detection.hpp>
 
 #include "enable_slp_rpc.hpp"
@@ -36,10 +38,10 @@ namespace
     {
         using namespace std::chrono_literals;
         
-        constexpr auto                          client_timeout = 30s;
+        //constexpr auto                          client_timeout = 30s;
         web::http::client::http_client_config   cfg;
 
-        cfg.set_timeout(client_timeout);
+        //cfg.set_timeout(client_timeout);
         return {FROM_STD_STR(atomic_dex::g_dex_rpc), cfg};
     }
 
@@ -130,7 +132,7 @@ namespace atomic_dex::mm2
         catch (const std::exception& error)
         {
             SPDLOG_ERROR(
-                "{} l{} f[{}], exception caught {} for rpc {}, body: {}", __FUNCTION__, __LINE__, fs::path(__FILE__).filename().string(), error.what(),
+                "{} l{} f[{}], exception caught {} for rpc {}, body: {}", __FUNCTION__, __LINE__, std::filesystem::path(__FILE__).filename().string(), error.what(),
                 rpc_command, body);
             answer.rpc_result_code = -1;
             answer.raw_result      = error.what();
