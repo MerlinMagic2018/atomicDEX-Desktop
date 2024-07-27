@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -32,7 +32,6 @@ namespace
         return cfg;
     }()};
 
-    t_http_client_ptr g_paprika_proxy_http_client{std::make_unique<web::http::client::http_client>(FROM_STD_STR("https://api.coinpaprika.com"), g_cfg)};
     std::atomic_bool  g_mm2_default_coins_ready{false};
 
     pplx::task<web::http::http_response>
@@ -164,17 +163,16 @@ namespace atomic_dex
     void
     internet_service_checker::fetch_internet_connection()
     {
-        //query_internet(g_paprika_proxy_http_client, "/v1/coins/btc-bitcoin", &internet_service_checker::is_paprika_provider_alive);
+        // TODO: This is only checking mm2 connection, not connection to the internet.
         if (this->m_system_manager.has_system<mm2_service>() && g_mm2_default_coins_ready)
         {
             auto& mm2 = this->m_system_manager.get_system<mm2_service>();
             if (mm2.is_mm2_running())
             {
-                SPDLOG_INFO("mm2 is alive, checking if ware able to fetch a simple orderbook");
+                SPDLOG_INFO("mm2 is alive, checking if we are able to fetch mm2 version");
                 nlohmann::json      batch           = nlohmann::json::array();
-                nlohmann::json      current_request = mm2::template_request("orderbook", true);
-                t_orderbook_request req_orderbook{.base = g_primary_dex_coin, .rel = g_second_primary_dex_coin};
-                mm2::to_json(current_request, req_orderbook);
+                nlohmann::json      current_request = mm2::template_request("version");
+                // SPDLOG_DEBUG("version request {}", current_request.dump(4));
                 batch.push_back(current_request);
                 auto async_answer = mm2.get_mm2_client().async_rpc_batch_standalone(batch);
                 generic_treat_answer(async_answer, TO_STD_STR(atomic_dex::g_dex_rpc), &internet_service_checker::is_mm2_endpoint_alive);

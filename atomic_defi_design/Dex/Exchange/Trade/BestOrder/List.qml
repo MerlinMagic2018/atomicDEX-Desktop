@@ -14,9 +14,11 @@ import Dex.Components 1.0 as Dex
 Widget
 {
     id: _control
-    title: qsTr("Best Orders")
-    margins: 20
-    spacing: 20
+    title: qsTr("Best Orders for %1").arg(left_ticker)
+
+    margins: 10
+    spacing: 10
+    collapsable: false
 
     Header
     {

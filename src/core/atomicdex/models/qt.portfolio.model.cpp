@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -60,20 +60,26 @@ namespace atomic_dex
         for (auto&& ticker: tickers)
         {
             if (m_ticker_registry.find(ticker) != m_ticker_registry.end())
+            {
+                SPDLOG_INFO("ticker {} not in m_ticker_registry", ticker);
                 continue;
+            }
+            SPDLOG_INFO("initialize_portfolio for ticker: {}", ticker);
             const auto& mm2_system    = this->m_system_manager.get_system<mm2_service>();
             const auto& price_service = this->m_system_manager.get_system<global_price_service>();
             const auto& provider      = this->m_system_manager.get_system<komodo_prices_provider>();
             auto        coin          = mm2_system.get_coin_info(ticker);
-
+            SPDLOG_INFO("Building portfolio for ticker {}", coin.ticker);
             std::error_code ec;
+            std::string balance       = mm2_system.get_balance_info(coin.ticker, ec);
+            SPDLOG_INFO("balance for ticker {}: {}", coin.ticker, balance);
             const QString   change_24h = retrieve_change_24h(provider, coin, *m_config, m_system_manager);
             portfolio_data  data{
                 .ticker                           = QString::fromStdString(coin.ticker),
                 .gui_ticker                       = QString::fromStdString(coin.gui_ticker),
                 .coin_type                        = QString::fromStdString(coin.type),
                 .name                             = QString::fromStdString(coin.name),
-                .balance                          = QString::fromStdString(mm2_system.my_balance(coin.ticker, ec)),
+                .balance                          = QString::fromStdString(balance),
                 .main_currency_balance            = QString::fromStdString(price_service.get_price_in_fiat(m_config->current_currency, coin.ticker, ec)),
                 .change_24h                       = change_24h,
                 .main_currency_price_for_one_unit = QString::fromStdString(price_service.get_rate_conversion(m_config->current_currency, coin.ticker, true)),
@@ -101,6 +107,35 @@ namespace atomic_dex
     }
 
     bool
+    portfolio_model::update_activation_status()
+    {
+        // This feels a bit heavy handed. There should be a better way to do this.
+        // Function may be unused.
+        const auto&        mm2_system    = this->m_system_manager.get_system<mm2_service>();
+        const auto         coins         = this->m_system_manager.get_system<portfolio_page>().get_global_cfg()->get_enabled_coins();
+
+        for (auto&& [_, coin]: coins)
+        {
+            if (m_ticker_registry.find(coin.ticker) == m_ticker_registry.end())
+            {
+                SPDLOG_WARN("[update_activation_status] ticker: {} not inserted yet in the model, skipping", coin.ticker);
+                return false;
+            }
+            const std::string& ticker = coin.ticker;
+            if (const auto res = this->match(this->index(0, 0), TickerRole, QString::fromStdString(ticker), 1, Qt::MatchFlag::MatchExactly);
+                not res.isEmpty())
+            {
+                std::error_code    ec;
+                const QModelIndex& idx         = res.at(0);
+                auto        coin_info          = mm2_system.get_coin_info(ticker);
+                QJsonObject status = nlohmann_json_object_to_qt_json_object(coin_info.activation_status);
+                update_value(ActivationStatus, status, idx, *this);
+                SPDLOG_DEBUG("updated activation status of: {}", ticker);
+            }
+        }
+    }
+
+    bool
     portfolio_model::update_currency_values()
     {
         const auto&        mm2_system    = this->m_system_manager.get_system<mm2_service>();
@@ -114,13 +149,14 @@ namespace atomic_dex
         {
             if (m_ticker_registry.find(coin.ticker) == m_ticker_registry.end())
             {
-                SPDLOG_WARN("ticker: {} not inserted yet in the model, skipping", coin.ticker);
+                SPDLOG_WARN("[update_currency_values] ticker: {} not inserted yet in the model, skipping", coin.ticker);
                 return false;
             }
             const std::string& ticker = coin.ticker;
             if (const auto res = this->match(this->index(0, 0), TickerRole, QString::fromStdString(ticker), 1, Qt::MatchFlag::MatchExactly);
                 not res.isEmpty())
             {
+                // SPDLOG_INFO("[update_currency_values] for ticker: {}", coin.ticker);
                 std::error_code    ec;
                 const QModelIndex& idx                         = res.at(0);
                 const QString      main_currency_balance_value = QString::fromStdString(price_service.get_price_in_fiat(currency, ticker, ec));
@@ -135,7 +171,7 @@ namespace atomic_dex
                 update_value(LastPriceTimestamp, last_price_timestamp, idx, *this);
                 QString change24_h = retrieve_change_24h(provider, coin, *m_config, m_system_manager);
                 update_value(Change24H, change24_h, idx, *this);
-                const QString balance                           = QString::fromStdString(mm2_system.my_balance(coin.ticker, ec));
+                const QString balance                           = QString::fromStdString(mm2_system.get_balance_info(coin.ticker, ec));
                 auto&& [prev_balance, new_balance, is_change_b] = update_value(BalanceRole, balance, idx, *this);
                 const QString display                           = QString::fromStdString(coin.ticker) + " (" + balance + ")";
                 update_value(Display, display, idx, *this);
@@ -171,9 +207,10 @@ namespace atomic_dex
                 SPDLOG_WARN("ticker: {} not inserted yet in the model, skipping", ticker);
                 return false;
             }
-            // SPDLOG_DEBUG("trying updating balance values of: {}", ticker);
+            
             if (const auto res = this->match(this->index(0, 0), TickerRole, QString::fromStdString(ticker), 1, Qt::MatchFlag::MatchExactly); not res.isEmpty())
             {
+                // SPDLOG_DEBUG("Updating balance values of: {}", ticker);
                 const auto&        mm2_system    = this->m_system_manager.get_system<mm2_service>();
                 const auto*        global_cfg    = this->m_system_manager.get_system<portfolio_page>().get_global_cfg();
                 const auto         coin          = global_cfg->get_coin_info(ticker);
@@ -183,7 +220,7 @@ namespace atomic_dex
                 const std::string& currency                     = m_config->current_currency;
                 const std::string& fiat                         = m_config->current_fiat;
                 const QModelIndex& idx                          = res.at(0);
-                const QString      balance                      = QString::fromStdString(mm2_system.my_balance(ticker, ec));
+                const QString      balance                      = QString::fromStdString(mm2_system.get_balance_info(ticker, ec));
                 auto&& [prev_balance, new_balance, is_change_b] = update_value(BalanceRole, balance, idx, *this);
                 const QString main_currency_balance_value       = QString::fromStdString(price_service.get_price_in_fiat(currency, ticker, ec));
                 auto&& [_1, _2, is_change_mc]                   = update_value(MainCurrencyBalanceRole, main_currency_balance_value, idx, *this);
@@ -399,6 +436,18 @@ namespace atomic_dex
         return true;
     }
 
+    QString
+    portfolio_model::coin_balance(QString coin)
+    {
+        auto res = this->match(this->index(0, 0), TickerRole, coin, 1, Qt::MatchFlag::MatchExactly);
+        // assert(not res.empty());
+        if (not res.empty())
+        {
+            return QString(this->data(res.at(0), BalanceRole).toString());
+        }
+        return "0";
+    }
+
     void
     portfolio_model::disable_coins(const QStringList& coins)
     {
@@ -522,7 +571,12 @@ namespace atomic_dex
         QString    amount     = QString::fromStdString(amount_f.str(8, std::ios_base::fixed));
         qint64     timestamp  = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
         QString    human_date = QString::fromStdString(utils::to_human_date<std::chrono::seconds>(timestamp, "%e %b %Y, %H:%M"));
-        this->m_dispatcher.trigger<balance_update_notification>(am_i_sender, amount, ticker, human_date, timestamp);
+        // Logs showed `balance update notification: am_i_sender: false amount: 0.00000000 ticker: USDT-SLP` sometimes, just before a crash.
+        // This is a temporary fix to see if it prevents the crash.
+        if (amount_f > 0.0)
+        {
+            this->m_dispatcher.trigger<balance_update_notification>(am_i_sender, amount, ticker, human_date, timestamp);
+        }
         emit portfolioItemDataChanged();
     }
 

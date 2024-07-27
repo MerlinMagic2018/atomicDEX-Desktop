@@ -20,11 +20,12 @@ Qaterial.Dialog
 {
     id: setting_modal
     property alias selectedMenuIndex: menu_list.currentIndex
-    readonly property string mm2_version: API.app.settings_pg.get_mm2_version()
     property var recommended_fiats: API.app.settings_pg.get_recommended_fiats()
     property var fiats: API.app.settings_pg.get_available_fiats()
     property var enableable_coins_count: enableable_coins_count_combo_box.currentValue
     property var orders: API.app.orders_mdl.orders_proxy_mdl.ModelHelper
+    readonly property date default_min_date: new Date("2019-01-01")
+    readonly property date default_max_date: new Date(new Date().setDate(new Date().getDate()))
 
     width: 950
     height: 650
@@ -205,6 +206,7 @@ Qaterial.Dialog
                             topPadding: 10
                             spacing: 15
 
+                            // Notifications toggle
                             RowLayout
                             {
                                 width: parent.width - 30
@@ -229,6 +231,32 @@ Qaterial.Dialog
                                 }
                             }
 
+                            // Spam filter toggle
+                            RowLayout
+                            {
+                                width: parent.width - 30
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                height: 50
+
+                                DexLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.fillWidth: true
+                                    font: DexTypo.subtitle1
+                                    text: qsTr("Hide Poison Transactions in History")
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                DexSwitch
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Component.onCompleted: checked = API.app.settings_pg.spamfilter_enabled
+                                    onCheckedChanged: API.app.settings_pg.spamfilter_enabled = checked
+                                }
+                            }
+
+                            // Max Coins Dropdown
                             RowLayout
                             {
                                 width: parent.width - 30
@@ -269,6 +297,66 @@ Qaterial.Dialog
                                 title: qsTr("Logs")
                                 buttonText: qsTr("Open Folder")
                                 onClicked: openLogsFolder()
+                            }
+
+                            // Sync date picker
+                            RowLayout
+                            {
+                                width: parent.width - 30
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                height: 50
+
+                                DexLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.fillWidth: true
+                                    font: DexTypo.subtitle1
+                                    text: qsTr("ZHTLC sync date")
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                DefaultCheckBox
+                                {
+                                    id: use_sync_date_checkbox
+
+                                    spacing: 2
+
+                                    label.wrapMode: Label.NoWrap
+                                    label.font.pixelSize: 14
+                                    text: qsTr("use date sync")
+                                    textColor: Dex.CurrentTheme.foregroundColor2
+                                    Component.onCompleted: checked = API.app.settings_pg.get_use_sync_date()
+                                    onToggled: {
+                                        atomic_settings2.setValue(
+                                            "UseSyncDate",
+                                            checked
+                                        )
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                DatePicker
+                                {
+                                    id: sync_date
+                                    enabled: use_sync_date_checkbox.checked
+                                    titleText: qsTr("Sync Date")
+                                    minimumDate: default_min_date
+                                    maximumDate: default_max_date
+                                    selectedDate: {
+                                        var date = new Date(new Date(0).setUTCSeconds(API.app.settings_pg.get_pirate_sync_date()));
+                                        console.log(API.app.settings_pg.get_pirate_sync_date());
+                                        console.log(date);
+                                        return date;
+                                    }
+                                    onAccepted: {
+                                        atomic_settings2.setValue(
+                                            "PirateSyncDate",
+                                            parseInt(selectedDate.getTime().valueOf()/1000)
+                                        )
+                                    }
+                                }
                             }
 
                             SettingsButton
@@ -394,6 +482,32 @@ Qaterial.Dialog
                                     }
                                 }
                             }
+                            
+                            // Post-order placement toggle
+                            RowLayout
+                            {
+                                width: parent.width - 30
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                height: 50
+
+                                DexLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.fillWidth: true
+                                    font: DexTypo.subtitle1
+                                    text: qsTr("Show orders after placement")
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                DexSwitch
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Component.onCompleted: checked = API.app.settings_pg.postorder_enabled
+                                    onCheckedChanged: API.app.settings_pg.postorder_enabled = checked
+                                }
+                            }
+
                         }
                     }
                     Item
@@ -528,6 +642,31 @@ Qaterial.Dialog
                                 onClicked: camouflage_password_modal.open()
                             }
 
+                            // Spam filter toggle
+                            RowLayout
+                            {
+                                width: parent.width - 30
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                height: 50
+
+                                DexLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.fillWidth: true
+                                    font: DexTypo.subtitle1
+                                    text: qsTr("Reuse static RPC password")
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                DexSwitch
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Component.onCompleted: checked = API.app.settings_pg.static_rpcpass_enabled
+                                    onCheckedChanged: API.app.settings_pg.static_rpcpass_enabled = checked
+                                }
+                            }
+
                         }
                     }
 
@@ -537,7 +676,7 @@ Qaterial.Dialog
                         {
                             anchors.fill: parent
                             topPadding: 10
-                            spacing: 15
+                            spacing: 12
 
                             ModalLoader
                             {
@@ -608,6 +747,50 @@ Qaterial.Dialog
                                 {
                                     Layout.alignment: Qt.AlignVCenter
                                     Layout.fillWidth: true
+                                    text: qsTr("RPC Port")
+                                }
+
+                                DexCopyableLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: API.app.settings_pg.get_rpcport()
+                                    onCopyNotificationTitle: qsTr("RPC Port")
+                                    onCopyNotificationMsg: qsTr("RPC Port copied to clipboard.")
+                                }
+                            }
+
+                            RowLayout
+                            {
+                                width: parent.width - 30
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                height: 60
+
+                                DexLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.fillWidth: true
+                                    text: qsTr("Peer ID")
+                                }
+
+                                DexCopyableLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: API.app.settings_pg.get_peerid()
+                                    onCopyNotificationTitle: qsTr("Peer ID")
+                                    onCopyNotificationMsg: qsTr("Peer ID copied to clipboard.")
+                                }
+                            }
+
+                            RowLayout
+                            {
+                                width: parent.width - 30
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                height: 60
+
+                                DexLabel
+                                {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.fillWidth: true
                                     text: qsTr("Qt version")
                                 }
 
@@ -641,7 +824,7 @@ Qaterial.Dialog
 
             DexAppButton
             {
-                text: qsTr("Search Update")
+                text: qsTr("Search for Update")
                 height: 48
                 radius: 20
                 leftPadding: 20

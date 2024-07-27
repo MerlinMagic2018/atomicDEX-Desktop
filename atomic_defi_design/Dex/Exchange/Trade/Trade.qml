@@ -48,25 +48,32 @@ Item
     readonly property bool price_is_empty: parseFloat(non_null_price) <= 0
 
     readonly property string backend_price: API.app.trading_pg.price
-    function setPrice(v) {
-        API.app.trading_pg.price = v
-    }
     readonly property int last_trading_error: API.app.trading_pg.last_trading_error
     readonly property string max_volume: API.app.trading_pg.max_volume
     readonly property string backend_volume: API.app.trading_pg.volume
-    function setVolume(v) {
-        API.app.trading_pg.volume = v
+    property bool sell_mode: API.app.trading_pg.market_mode.toString() === "Sell"
+    readonly property string base_amount: API.app.trading_pg.base_amount
+    readonly property string rel_amount: API.app.trading_pg.rel_amount
+
+    function setPrice(v) {
+        API.app.trading_pg.price = v
+        API.app.trading_pg.determine_error_cases()
     }
 
-    property bool sell_mode: API.app.trading_pg.market_mode.toString(
-                                 ) === "Sell"
+    function setVolume(v) {
+        API.app.trading_pg.volume = v
+        API.app.trading_pg.determine_error_cases()
+    }
+                             
+    function setMakerMode(v) {
+        API.app.trading_pg.maker_mode = v
+    }
+
     function setMarketMode(v) {
         API.app.trading_pg.market_mode = v
     }
 
-    readonly property string base_amount: API.app.trading_pg.base_amount
-    readonly property string rel_amount: API.app.trading_pg.rel_amount
-
+    
     Timer
     {
         id: swap_cooldown
@@ -79,7 +86,7 @@ Item
                 && exchange.current_page === idx_exchange_trade
     }
 
-    readonly property var preffered_order: API.app.trading_pg.preffered_order
+    readonly property var preferred_order: API.app.trading_pg.preferred_order
 
 
 
@@ -142,9 +149,20 @@ Item
         }
 
         if (sell_mode)
-            API.app.trading_pg.place_sell_order(nota, confs)
+        {
+            if (API.app.trading_pg.maker_mode)
+            {
+                API.app.trading_pg.place_setprice_order(nota, confs, options.cancel_previous)
+            }
+            else
+            {
+                API.app.trading_pg.place_sell_order(nota, confs, options.good_until_canceled)
+            }            
+        }
         else
-            API.app.trading_pg.place_buy_order(nota, confs)
+        {
+            API.app.trading_pg.place_buy_order(nota, confs, options.good_until_canceled)
+        }
 
         orderPlaced()
     }
@@ -158,9 +176,9 @@ Item
     Column
     {
         anchors.fill: parent
-        spacing: 15
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
+        spacing: 8
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
 
         TradeViewHeader
         {
@@ -168,10 +186,8 @@ Item
             width: parent.width
             height: parent.height * 0.06
 
-            proViewTickerSelectors: proView.tickerSelectors
             proViewTrInfo: proView.trInfo
-            proViewOrderBook: proView.orderBook
-            proViewBestOrders: proView.bestOrders
+            proViewMarketsOrderBook: proView.marketsOrderBook
             proViewPlaceOrderForm: proView.placeOrderForm
         }
 
@@ -179,7 +195,7 @@ Item
         {
             id: proView
             width: parent.width
-            height: parent.height * 0.90
+            height: parent.height * 0.91
             visible: API.app.trading_pg.current_trading_mode == TradingMode.Pro
             enabled: visible
         }

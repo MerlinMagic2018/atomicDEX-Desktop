@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -27,7 +27,7 @@
 #include <antara/gaming/ecs/system.manager.hpp>
 
 //! Project
-#include "atomicdex/api/mm2/rpc.orderbook.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.orderbook.hpp"
 #include "atomicdex/models/qt.orderbook.proxy.model.hpp"
 
 namespace atomic_dex
@@ -53,30 +53,30 @@ namespace atomic_dex
             PriceRole = Qt::UserRole + 1, // 257
             CoinRole,
             TotalRole,
-            UUIDRole,
+            UUIDRole,               // 260
             IsMineRole,
             PriceDenomRole,
             PriceNumerRole,
             PercentDepthRole,
-            MinVolumeRole,
+            MinVolumeRole,          // 265
             EnoughFundsToPayMinVolume,
             CEXRatesRole,
             SendRole,
             PriceFiatRole,
-            HaveCEXIDRole,
+            HaveCEXIDRole,          // 270
             BaseMinVolumeRole,
             BaseMinVolumeDenomRole,
             BaseMinVolumeNumerRole,
             BaseMaxVolumeRole,
-            BaseMaxVolumeDenomRole,
+            BaseMaxVolumeDenomRole, // 275
             BaseMaxVolumeNumerRole,
             RelMinVolumeRole,
             RelMinVolumeDenomRole,
             RelMinVolumeNumerRole,
-            RelMaxVolumeRole,
+            RelMaxVolumeRole,      // 280
             RelMaxVolumeDenomRole,
             RelMaxVolumeNumerRole,
-            NameAndTicker
+            NameAndTicker          // 283
         };
 
         orderbook_model(kind orderbook_kind, ag::ecs::system_manager& system_mgr, QObject* parent = nullptr);
@@ -88,8 +88,8 @@ namespace atomic_dex
         bool                                 setData(const QModelIndex& index, const QVariant& value, int role) final;
         bool                                 removeRows(int row, int count, const QModelIndex& parent) override;
 
-        void                                 reset_orderbook(const t_orders_contents& orderbook);
-        void                                 refresh_orderbook(const t_orders_contents& orderbook);
+        void                                 reset_orderbook(const t_orders_contents& orderbook, bool is_bestorders=false);
+        void                                 refresh_orderbook_model_data(const t_orders_contents& orderbook, bool is_bestorders=false);
         void                                 clear_orderbook();
         [[nodiscard]] int                    get_length() const;
         [[nodiscard]] orderbook_proxy_model* get_orderbook_proxy() const;

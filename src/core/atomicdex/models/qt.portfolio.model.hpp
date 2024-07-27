@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -96,18 +96,20 @@ namespace atomic_dex
         Q_INVOKABLE void clean_priv_keys();
 
         //! Public api
-        void                            initialize_portfolio(const std::vector<std::string>& tickers);
-        bool                            update_currency_values();
-        bool                            update_balance_values(const std::vector<std::string>& tickers);
-        void                            adjust_percent_current_currency(QString balance_all);
-        void                            disable_coins(const QStringList& coins);
-        void                            set_cfg(atomic_dex::cfg& cfg);
-        [[nodiscard]] t_portfolio_datas get_underlying_data() const;
+        void                                  initialize_portfolio(const std::vector<std::string>& tickers);
+        bool                                  update_activation_status();
+        bool                                  update_currency_values();
+        bool                                  update_balance_values(const std::vector<std::string>& tickers);
+        void                                  adjust_percent_current_currency(QString balance_all);
+        void                                  disable_coins(const QStringList& coins);
+        void                                  set_cfg(atomic_dex::cfg& cfg);
+        [[nodiscard]] t_portfolio_datas       get_underlying_data() const;
+        [[nodiscard]] Q_INVOKABLE QString     coin_balance(QString coin);
 
         //! Properties
-        [[nodiscard]] portfolio_proxy_model* get_portfolio_proxy_mdl() const;
-        [[nodiscard]] portfolio_proxy_model* get_pie_char_proxy_mdl() const;
-        [[nodiscard]] int                    get_length() const;
+        [[nodiscard]] portfolio_proxy_model*  get_portfolio_proxy_mdl() const;
+        [[nodiscard]] portfolio_proxy_model*  get_pie_char_proxy_mdl() const;
+        [[nodiscard]] int                     get_length() const;
 
         void reset();
 

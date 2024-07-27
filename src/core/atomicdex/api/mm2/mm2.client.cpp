@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2022 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -18,16 +18,22 @@
 
 #include <meta/detection/detection.hpp>
 
-#include "enable_slp_rpc.hpp"
-#include "get_public_key_rpc.hpp"
-#include "enable_bch_with_tokens_rpc.hpp"
-#include "my_tx_history_rpc.hpp"
-#include "my_tx_history_v1_rpc.hpp"
-#include "mm2.client.hpp"
 #include "mm2.hpp"
-#include "atomicdex/constants/dex.constants.hpp"
-#include "rpc.hpp"
+#include "atomicdex/api/mm2/rpc.hpp"
+#include "mm2.client.hpp"
 #include "rpc.tx.history.hpp"
+#include "atomicdex/constants/dex.constants.hpp"
+#include "atomicdex/api/mm2/rpc_v1/rpc.my_tx_history.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.get_public_key.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.my_tx_history.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.orderbook.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.bestorders.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.enable_tendermint_token.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.enable_tendermint_with_assets.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.enable_erc20.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.enable_eth_with_tokens.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.enable_slp_rpc.hpp"
+#include "atomicdex/api/mm2/rpc_v2/rpc2.enable_bch_with_tokens_rpc.hpp"
 
 namespace
 {
@@ -57,6 +63,7 @@ namespace
         if (Rpc::is_v2)
         {
             json_req["mmrpc"] = "2.0";
+            json_req["id"] = 42;
             json_req.push_back({"params", json_data});
         }
         else
@@ -70,18 +77,39 @@ namespace
     template <atomic_dex::mm2::rpc Rpc>
     Rpc process_rpc_answer(const web::http::http_response& answer)
     {
+        std::string body = TO_STD_STR(answer.extract_string(true).get());
+        // SPDLOG_DEBUG("body: {}", body);
+        nlohmann::json json_answer;
         Rpc rpc;
-        auto json_answer = nlohmann::json::parse(TO_STD_STR(answer.extract_string(true).get()));
-        
+        try
+        {
+            json_answer = nlohmann::json::parse(body);
+            // SPDLOG_DEBUG("rpc answer: {}", json_answer.dump(4));
+        }
+        catch (const nlohmann::json::parse_error& error)
+        {
+            SPDLOG_ERROR("rpc answer error: {}", error.what());
+        }
+
         if (Rpc::is_v2)
         {
             if (answer.status_code() == 200)
+            {
                 rpc.result = json_answer.at("result").get<typename Rpc::expected_result_type>();
+                rpc.raw_result = json_answer.at("result").dump();
+            }
             else
+            {
+                SPDLOG_DEBUG("rpc2 answer: error");
                 rpc.error = json_answer.get<typename Rpc::expected_error_type>();
+                rpc.raw_result = json_answer.dump();
+                SPDLOG_DEBUG("rpc.raw_result: {}", rpc.raw_result);
+            }
         }
         else
+        {
             rpc.result = json_answer.get<typename Rpc::expected_result_type>();
+        }
         return rpc;
     }
 } // namespace
@@ -157,11 +185,19 @@ namespace atomic_dex::mm2
         using request_type = typename Rpc::expected_request_type;
         process_rpc_async(request_type{}, on_rpc_processed);
     }
-    template void mm2_client::process_rpc_async<get_public_key_rpc>(const std::function<void(get_public_key_rpc)>&);
+
+    // template void mm2_client::process_rpc_async<my_balance_rpc>(const std::function<void(orderbook_rpc)>&);
+    template void mm2_client::process_rpc_async<orderbook_rpc>(const std::function<void(orderbook_rpc)>&);
+    template void mm2_client::process_rpc_async<bestorders_rpc>(const std::function<void(bestorders_rpc)>&);
     template void mm2_client::process_rpc_async<enable_slp_rpc>(const std::function<void(enable_slp_rpc)>&);
-    template void mm2_client::process_rpc_async<enable_bch_with_tokens_rpc>(const std::function<void(enable_bch_with_tokens_rpc)>&);
-    template void mm2_client::process_rpc_async<my_tx_history_rpc>(const std::function<void(my_tx_history_rpc)>&);
+    template void mm2_client::process_rpc_async<enable_erc20_rpc>(const std::function<void(enable_erc20_rpc)>&);
+    template void mm2_client::process_rpc_async<get_public_key_rpc>(const std::function<void(get_public_key_rpc)>&);
     template void mm2_client::process_rpc_async<my_tx_history_v1_rpc>(const std::function<void(my_tx_history_v1_rpc)>&);
+    template void mm2_client::process_rpc_async<my_tx_history_v2_rpc>(const std::function<void(my_tx_history_v2_rpc)>&);
+    template void mm2_client::process_rpc_async<enable_eth_with_tokens_rpc>(const std::function<void(enable_eth_with_tokens_rpc)>&);
+    template void mm2_client::process_rpc_async<enable_bch_with_tokens_rpc>(const std::function<void(enable_bch_with_tokens_rpc)>&);
+    template void mm2_client::process_rpc_async<enable_tendermint_token_rpc>(const std::function<void(enable_tendermint_token_rpc)>&);
+    template void mm2_client::process_rpc_async<enable_tendermint_with_assets_rpc>(const std::function<void(enable_tendermint_with_assets_rpc)>&);
     
     template <mm2::rpc Rpc>
     void mm2_client::process_rpc_async(typename Rpc::expected_request_type request, const std::function<void(Rpc)>& on_rpc_processed)
@@ -179,6 +215,7 @@ namespace atomic_dex::mm2
                                }
                                catch (const std::exception& ex)
                                {
+                                   // SPDLOG_DEBUG("process_rpc_answer rpc.result: {}", rpc.raw_result);
                                    SPDLOG_ERROR(ex.what());
                                }
                            });
@@ -192,11 +229,11 @@ namespace atomic_dex::mm2
 
     template <typename TRequest, typename TAnswer>
     TAnswer
-    mm2_client::process_rpc(TRequest&& request, std::string rpc_command)
+    mm2_client::process_rpc(TRequest&& request, std::string rpc_command, bool is_v2)
     {
         SPDLOG_DEBUG("Processing rpc call: {}", rpc_command);
 
-        nlohmann::json json_data = mm2::template_request(rpc_command);
+        nlohmann::json json_data = mm2::template_request(rpc_command, is_v2);
 
         mm2::to_json(json_data, request);
 
@@ -209,6 +246,12 @@ namespace atomic_dex::mm2
         rpc_request.set_body(json_data.dump());
         auto resp = generate_client().request(rpc_request).get();
         return rpc_process_answer<TAnswer>(resp, rpc_command);
+    }
+
+    t_enable_z_coin_cancel_answer
+    mm2_client::rpc_enable_z_coin_cancel(t_enable_z_coin_cancel_request&& request)
+    {
+        return process_rpc<t_enable_z_coin_cancel_request, t_enable_z_coin_cancel_answer>(std::forward<t_enable_z_coin_cancel_request>(request), "task::enable_z_coin::cancel", true);
     }
 
     t_disable_coin_answer

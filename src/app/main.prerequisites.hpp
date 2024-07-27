@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2023 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -338,12 +338,16 @@ handle_settings(QSettings& settings)
 #else
     create_settings_functor("ThemePath", QString::fromStdString(atomic_dex::utils::get_themes_path().string()));
 #endif
+    using namespace std::chrono;
+    int timestamp  = duration_cast<seconds>(system_clock::now().time_since_epoch()).count() - 86400 * 2;
     create_settings_functor("AutomaticUpdateOrderBot", QVariant(false));
     create_settings_functor("WalletChartsCategory", qint32(WalletChartsCategories::OneMonth));
     create_settings_functor("AvailableLang", QStringList{"en", "es", "fr", "de", "tr", "ru"});
     create_settings_functor("CurrentLang", QString("en"));
     create_settings_functor("2FA", 0);
     create_settings_functor("MaximumNbCoinsEnabled", 50);
+    create_settings_functor("PirateSyncDate", timestamp);
+    create_settings_functor("UseSyncDate", false);
     create_settings_functor("DefaultTradingMode", TradingMode::Simple);
     create_settings_functor("FontMode", QQuickWindow::TextRenderType::QtTextRendering);
 }

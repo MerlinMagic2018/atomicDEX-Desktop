@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -29,14 +29,21 @@ namespace atomic_dex
         std::string                                  current_fiat_sign;
         std::unordered_map<std::string, std::string> available_currency_signs;
         std::vector<std::string>                     available_fiat;
+        std::vector<std::string>                     recommended_fiat;
         std::vector<std::string>                     possible_currencies;
         bool                                         notification_enabled;
+        bool                                         postorder_enabled{false};
+        bool                                         spamfilter_enabled{false};
+        bool                                         static_rpcpass_enabled{false};
     };
 
     void               from_json(const nlohmann::json& j, cfg& config);
     void               change_currency(cfg& config, const std::string& new_currency);
     void               change_fiat(cfg& config, const std::string& new_fiat);
     void               change_notification_status(cfg& config, bool is_enabled);
+    void               change_postorder_status(cfg& config, bool is_enabled);
+    void               change_spamfilter_status(cfg& config, bool is_enabled);
+    void               change_static_rpcpass_status(cfg& config, bool is_enabled);
     [[nodiscard]] bool is_this_currency_a_fiat(const cfg& config, const std::string& currency);
     cfg                load_cfg();
     std::string        retrieve_sign_from_ticker(const cfg& config, const std::string& currency);

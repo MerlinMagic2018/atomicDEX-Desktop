@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -362,22 +362,21 @@ namespace atomic_dex
     }
 
     void
-    orderbook_model::reset_orderbook(const t_orders_contents& orderbook)
+    orderbook_model::reset_orderbook(const t_orders_contents& orderbook, bool is_bestorders)
     {
+        // SPDLOG_DEBUG("[orderbook_model::reset_orderbook], is_bestorders: {}", is_bestorders);
         if (!orderbook.empty())
         {
             SPDLOG_INFO(
-                "full orderbook initialization initial size: {} target size: {}, orderbook_kind: {}", rowCount(), orderbook.size(), m_current_orderbook_kind);
+                "full orderbook initialization initial size: {} target size: {}, orderbook_kind: {}, is_bestorders: {}",
+                rowCount(), orderbook.size(), m_current_orderbook_kind, is_bestorders
+            );
         }
         this->beginResetModel();
         m_model_data = orderbook;
         m_orders_id_registry.clear();
         for (auto&& order: m_model_data)
         {
-            if (order.coin.find("-segwit") != std::string::npos)
-            {
-                order.uuid = order.uuid + "-segwit";
-            }
             if (this->m_orders_id_registry.find(order.uuid) == m_orders_id_registry.end())
             {
                 this->m_orders_id_registry.emplace(order.uuid);
@@ -385,6 +384,8 @@ namespace atomic_dex
         }
         this->endResetModel();
         emit lengthChanged();
+        // This assert was causing a crash due to duplicated UUIDs being filtered out for orders that exist for both segwit and non-segwit of a coin,
+        // because bestorders response will add duplicate entries (one for each address format) to the response.
         assert(m_model_data.size() == m_orders_id_registry.size());
     }
 
@@ -403,7 +404,6 @@ namespace atomic_dex
             SPDLOG_WARN("Order with uuid: {} already present...skipping.", order.uuid);
             return;
         }
-
         assert(m_model_data.size() == m_orders_id_registry.size());
         beginInsertRows(QModelIndex(), m_model_data.size(), m_model_data.size());
         m_model_data.push_back(order);
@@ -441,7 +441,6 @@ namespace atomic_dex
         {
             //! ID Found, update !
             const QModelIndex& idx                  = res.at(0);
-            const auto         uuid_to_be_updated   = this->data(idx, OrderbookRoles::UUIDRole).toString().toStdString();
             auto&& [_, new_price, is_price_changed] = update_value(OrderbookRoles::PriceRole, QString::fromStdString(order.price), idx, *this);
             update_value(OrderbookRoles::PriceNumerRole, QString::fromStdString(order.price_fraction_numer), idx, *this);
             update_value(OrderbookRoles::PriceDenomRole, QString::fromStdString(order.price_fraction_denom), idx, *this);
@@ -505,8 +504,9 @@ namespace atomic_dex
                         if (price_std > preferred_price)
                         {
                             SPDLOG_INFO(
-                                "An order with a better price is available, uuid: {}, new_price: {}, current_price: {}", order.uuid,
-                                utils::format_float(price_std), utils::format_float(preferred_price));
+                                "An order with a better price is available, uuid: {}, new_price: {}, current_price: {}",
+                                order.uuid, utils::format_float(price_std), utils::format_float(preferred_price)
+                            );
                             trading_pg.set_selected_order_status(SelectedOrderStatus::BetterPriceAvailable);
                             emit betterOrderDetected(get_order_from_uuid(QString::fromStdString(order.uuid)));
                         }
@@ -522,19 +522,20 @@ namespace atomic_dex
     }
 
     void
-    orderbook_model::refresh_orderbook(const t_orders_contents& orderbook)
+    orderbook_model::refresh_orderbook_model_data(const t_orders_contents& orderbook, bool is_bestorders)
     {
+        // SPDLOG_DEBUG("[orderbook_model::refresh_orderbook_model_data], is_bestorders: {}", is_bestorders);
         auto refresh_functor = [this](const std::vector<mm2::order_contents>& contents)
         {
-            for (auto&& current_order: contents)
+            for (auto&& order: contents)
             {
-                if (this->m_orders_id_registry.find(current_order.uuid) != this->m_orders_id_registry.end())
+                if (this->m_orders_id_registry.find(order.uuid) != this->m_orders_id_registry.end())
                 {
-                    this->update_order(current_order);
+                    this->update_order(order);
                 }
                 else
                 {
-                    this->initialize_order(current_order);
+                    this->initialize_order(order);
                 }
             }
 
@@ -543,7 +544,8 @@ namespace atomic_dex
             for (auto&& id: this->m_orders_id_registry)
             {
                 bool res = std::none_of(begin(contents), end(contents), [id](auto&& contents) { return contents.uuid == id; });
-                //! Need to remove the row
+                // Need to remove the row
+                // segwits are deleted here when they shouldnt be
                 if (res)
                 {
                     auto res_list = this->match(index(0, 0), UUIDRole, QString::fromStdString(id));
@@ -577,15 +579,15 @@ namespace atomic_dex
             if (m_system_mgr.has_system<trading_page>() && m_current_orderbook_kind == kind::bids)
             {
                 auto&      trading_pg      = m_system_mgr.get_system<trading_page>();
-                const auto preffered_order = trading_pg.get_preferred_order();
-                if (!preffered_order.empty())
+                const auto preferred_order = trading_pg.get_preferred_order();
+                if (!preferred_order.empty())
                 {
-                    const auto selected_order_uuid = preffered_order.value("uuid", "").toString().toStdString();
+                    const auto selected_order_uuid = preferred_order.value("uuid", "").toString().toStdString();
                     if (selected_order_uuid == uuid_to_be_removed)
                     {
                         SPDLOG_WARN(
                             "The selected order uuid: {} is removed from the orderbook model, checking if a better order is available", uuid_to_be_removed);
-                        check_for_better_order(trading_pg, preffered_order, selected_order_uuid);
+                        check_for_better_order(trading_pg, preferred_order, selected_order_uuid);
                     }
                 }
             }
@@ -621,6 +623,7 @@ namespace atomic_dex
         return m_current_orderbook_kind;
     }
 
+    // This is used when betterOrderDetected
     QVariantMap
     orderbook_model::get_order_from_uuid([[maybe_unused]] QString uuid)
     {

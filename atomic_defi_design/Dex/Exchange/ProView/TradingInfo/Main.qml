@@ -5,26 +5,18 @@ import QtQuick.Controls 2.15
 import Qaterial 1.0 as Qaterial
 
 import Dex.Themes 1.0 as Dex
+import Dex.Components 1.0 as Dex
+import AtomicDEX.MarketMode 1.0
 import "../../../Constants"
 import "../../../Components"
 import "../../Trade"
 import "../../ProView"
 
-Widget
+ColumnLayout
 {
-    width: 495
+    Layout.preferredWidth: 450
+    Layout.fillHeight: true
     property alias currentIndex: tabView.currentIndex
-
-    title: qsTr("Trading Information")
-
-    background: null
-    margins: 0
-
-    Connections
-    {
-        target: exchange_trade
-        function onOrderSelected() { tabView.currentIndex = 0; }
-    }
 
     Qaterial.LatoTabBar
     {
@@ -67,7 +59,7 @@ Widget
         Layout.fillHeight: true
         color: Dex.CurrentTheme.floatingBackgroundColor
         radius: 10
-        Layout.preferredWidth: 495
+        Layout.preferredWidth: 450
 
         Qaterial.SwipeView
         {
@@ -81,27 +73,40 @@ Widget
             {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                spacing: 10
+                Layout.topMargin: 8
+                spacing: 8
+                
+                // Ticker selectors.
+                TickerSelectors
+                {
+                    id: selectors
+                    Layout.preferredWidth: 435
+                    Layout.preferredHeight: 85
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 8
+                }
+
                 // Chart
                 Chart
                 {
                     id: chart
-                    Layout.topMargin: 20
-                    Layout.leftMargin: 10
-                    Layout.rightMargin: 10
+                    Layout.topMargin: 8
+                    Layout.leftMargin: 5
+                    Layout.rightMargin: 5
                     Layout.fillHeight: true
-                    Layout.minimumWidth: 470
-                    Layout.minimumHeight: 200
+                    width: 435
+                    height: 240
                 }
 
                 PriceLineSimplified
                 {
                     id: price_line
-                    Layout.bottomMargin: 20
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 20
+                    Layout.bottomMargin: 12
+                    Layout.leftMargin: 5
+                    Layout.rightMargin: 5
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    width: 435
                 }
             }
 

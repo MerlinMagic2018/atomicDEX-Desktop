@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2013-2021 The Komodo Platform Developers.                      *
+ * Copyright © 2013-2024 The Komodo Platform Developers.                      *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -54,6 +54,10 @@ namespace atomic_dex
         case orders_model::RelCoinAmountRole:
             break;
         case orders_model::RelCoinAmountCurrentCurrencyRole:
+            break;
+        case orders_model::MinVolumeRole:
+            break;
+        case orders_model::MaxVolumeRole:
             break;
         case orders_model::OrderTypeRole:
             break;

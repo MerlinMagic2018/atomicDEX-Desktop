@@ -17,7 +17,7 @@ DEX_NEW_LIB(core INTERFACE
             DEX_API="${DEX_API}" DEX_RPC="${DEX_RPC}" DEX_RPCPORT="${DEX_RPCPORT}" DEX_NAME="${DEX_DISPLAY_NAME}" DEX_WEBSITE_URL="${DEX_WEBSITE}"
             DEX_SUPPORT_URL="${DEX_SUPPORT_PAGE}" DEX_DISCORD_URL="${DEX_DISCORD}" DEX_TWITTER_URL="${DEX_TWITTER}"
             DEX_PRIMARY_COIN="${DEX_PRIMARY_COIN}" DEX_SECOND_PRIMARY_COIN="${DEX_SECOND_PRIMARY_COIN}" #DEX_COMMON_DATA_FOLDER="${DEX_COMMON_DATA_FOLDER}"
-            DEX_PROJECT_NAME="${DEX_PROJECT_NAME}" DEX_COMPANY_NAME="${DEX_COMPANY_NAME}"
+            DEX_PROJECT_NAME="${DEX_PROJECT_NAME}" DEX_COMPANY_NAME="${DEX_COMPANY_NAME}" DEX_VERSION="${DEX_VERSION}"
             DEX_REPOSITORY_OWNER="${DEX_REPOSITORY_OWNER}" DEX_REPOSITORY_NAME="${DEX_REPOSITORY_NAME}"
             DEX_CHECKSUM_API_URL="${DEX_CHECKSUM_API_URL}" DEX_APPDATA_FOLDER="${DEX_APPDATA_FOLDER}"
         INTERFACE_DEFS
@@ -40,10 +40,6 @@ if (APPLE)
         endif()
     endmacro()
     adex_add_framework(Security ${PROJECT_NAME}_core)
-endif ()
-if (DISABLE_GEOBLOCKING)
-    message(STATUS "Disabling Geoblocking for dev purpose")
-    target_compile_definitions(${PROJECT_NAME}_core INTERFACE -DDISABLE_GEOBLOCKING)
 endif ()
 target_link_libraries(${PROJECT_NAME}_core INTERFACE SortFilterProxyModel)
 
@@ -117,11 +113,11 @@ add_executable(${PROJECT_NAME}_tests MACOSX_BUNDLE ${ICON}
         ##! API
         tests/api/coingecko/coingecko.tests.cpp
         tests/api/komodo_prices/komodo.prices.tests.cpp
-        tests/api/mm2/mm2.api.format.address.tests.cpp
-        tests/api/mm2/mm2.api.utxo.merge.params.tests.cpp
-        tests/api/mm2/mm2.api.balance.infos.tests.cpp
+        tests/api/mm2/mm2.api.address_format.tests.cpp
+        tests/api/mm2/mm2.api.utxo_merge_params.tests.cpp
+        tests/api/mm2/mm2.api.balance_infos.tests.cpp
         tests/api/mm2/mm2.fraction.tests.cpp
-        tests/api/mm2/mm2.rpc.trade.preimage.tests.cpp
+        tests/api/mm2/mm2.rpc2.trade_preimage.tests.cpp
 
         ##! CFG
         tests/config/coins.cfg.tests.cpp
@@ -129,7 +125,7 @@ add_executable(${PROJECT_NAME}_tests MACOSX_BUNDLE ${ICON}
         ##! API
         tests/api/coingecko/coingecko.tests.cpp
         tests/api/komodo_prices/komodo.prices.tests.cpp
-        tests/api/mm2/mm2.rpc.trade.preimage.tests.cpp
+        tests/api/mm2/mm2.rpc2.trade_preimage.tests.cpp
         tests/api/mm2/mm2.fraction.tests.cpp
         tests/api/mm2/enable_bch_with_tokens_rpc_tests.cpp
 

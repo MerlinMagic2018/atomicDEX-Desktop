@@ -1,5 +1,8 @@
 {
   "notification_enabled": true,
+  "spamfilter_enabled": false,
+  "postorder_enabled": false,  
+  "use_static_rpcpass": false,
   "current_currency": "USD",
   "current_fiat": "USD",
   "current_currency_sign": "$",
@@ -39,6 +42,9 @@
     "HUF": "Ft",
     "SEK": "kr",
     "KMD": "KMD",
+    "DOGE": "Ð",
+    "ETH": "⟠",
+    "ETH_ALT": "Ξ",
     "BTC": "₿",
     "BTC_ALT": "฿",
     "LTC": "Ł"
@@ -78,10 +84,19 @@
     "HUF",
     "SEK"
   ],
+  "recommended_fiat": [
+    "USD",
+    "EUR",
+    "GBP",
+    "HKD",
+    "IDR",
+    "ILS"
+  ],
   "possible_currencies": [
     "USD",
     "BTC",
     "KMD",
-    "LTC"
+    "LTC",
+    "DOGE"
   ]
 }

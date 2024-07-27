@@ -20,8 +20,14 @@ RowLayout
     property color color: !details ? "white" : Style.getCoinColor(details.ticker)
     property alias middle_text: middle_line.text_value
     property alias bottom_text: bottom_line.text_value
-    property int activation_progress: Dex.General.zhtlcActivationProgress(details.activation_status, details.ticker)
-
+    property int activation_pct: General.zhtlcActivationProgress(API.app.get_zhtlc_status(details.ticker), details.ticker)
+    Connections
+    {
+        target: API.app.settings_pg
+        function onZhtlcStatusChanged() {
+            activation_pct = General.zhtlcActivationProgress(API.app.get_zhtlc_status(details.ticker), details.ticker)
+        }
+    }
     Behavior on color { ColorAnimation { duration: Style.animationDuration } }
 
     Dex.Image
@@ -40,7 +46,7 @@ RowLayout
             anchors.centerIn: parent
             anchors.fill: parent
             radius: 10
-            enabled: Dex.General.isZhtlc(details.ticker) ? activation_progress != 100 : false
+            enabled: activation_pct < 100
             visible: enabled
             opacity: .9
             color: Dex.DexTheme.backgroundColor
@@ -50,11 +56,11 @@ RowLayout
         {
             anchors.centerIn: parent
             anchors.fill: parent
-            enabled: Dex.General.isZhtlc(details.ticker) ? activation_progress != 100 : false
+            enabled: activation_pct < 100
             visible: enabled
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            text: activation_progress + "%"
+            text: activation_pct + "%"
             font: Dex.DexTypo.body2
             color: Dex.DexTheme.okColor
         }
@@ -72,7 +78,7 @@ RowLayout
                 Layout.preferredWidth: parent.width - 15
 
                 text_value: !details ? "" :
-                            `<font color="${root.color}"><b>${details.ticker}</b></font>&nbsp;&nbsp;&nbsp;<font color="${Dex.CurrentTheme.foregroundColor}">${details.name}</font>`
+                            `<font color="${root.color}"><b>${details.ticker}</b></font><br /><font color="${Dex.CurrentTheme.foregroundColor2}">${details.name}</font>`
                 font.pixelSize: Style.textSizeSmall3
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
@@ -90,7 +96,7 @@ RowLayout
                 font: DexTypo.body2
                 wrapMode: Label.NoWrap
                 ToolTip.text: coin_value
-                Component.onCompleted: font.pixelSize = 11.5
+                Component.onCompleted: font.pixelSize = 11
             }
 
             Dex.Text
@@ -98,7 +104,7 @@ RowLayout
                 id: bottom_line
 
                 property string fiat_value: !details ? "" :
-                            General.formatFiat("", details.main_currency_balance, API.app.settings_pg.current_fiat_sign)
+                            General.formatFiat("", details.main_currency_balance, API.app.settings_pg.current_currency)
                 text: fiat_value
                 Layout.fillWidth: true
                 elide: Text.ElideRight
@@ -106,7 +112,7 @@ RowLayout
                 font: DexTypo.body2
                 wrapMode: Label.NoWrap
                 ToolTip.text: fiat_value
-                Component.onCompleted: font.pixelSize = 11.5
+                Component.onCompleted: font.pixelSize = 11
             }
         }
     }
